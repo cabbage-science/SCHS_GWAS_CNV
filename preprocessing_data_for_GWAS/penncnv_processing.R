@@ -21,7 +21,6 @@ colnames(pennCNV_output) <- CNV_colnames
 #### FUNCTION FOR TIDYING UP PENNCNV OUTPUT TABLE ####
 ######################################################
 
-
 separate_cols <- function(df) {
   df <- df %>% 
     mutate(temp_chrpos = cnv_id) %>%
@@ -121,6 +120,7 @@ calculate_CNV_counts <- function(df) {
                 values_from = Count)
   # Replacing all NA values with 0
   CNV_df[is.na(CNV_df)] <- 0
+  CNV_df <- CNV_df %>% mutate(Total = rowSums(CNV_df[,-1]))
   return(CNV_df)
 }
 
@@ -130,8 +130,11 @@ CNV_counts <- calculate_CNV_counts(CNV_data)
 # Calculate frequency - based on the count table from above
 
 calculate_CNV_frequency <- function(df) {
-  df <- df %>% mutate(Total = rowSums(df[,-1])) %>%
-    mutate(across(-c(CNV, Total), ~ ./Total))
+  df <- df %>% mutate(across(-c(CNV, Total), ~ ./Total)) %>%
+    select(-Total)
+  # Renaming column names for clarity 
+  colnames(df) <- paste0("cn=",colnames(df))
+  df <- rename(df, "CNV" = "cn=CNV")
   return(df)
 }
 
