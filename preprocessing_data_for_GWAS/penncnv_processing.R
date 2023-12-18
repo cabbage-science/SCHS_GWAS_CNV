@@ -10,7 +10,7 @@ library(tidyverse)
 #######################
 
 # Initializing column names for pennCNV output table
-CNV_colnames <- c("cnv_id", "num_snp", "length_bp", "state_cn", "indiv_ID", "start_snp", "end_snp", "confidence")
+CNV_colnames <- c("cnv_id", "num_snp", "length_bp", "state_cn", "indiv_ID", "start_snp", "end_snp", "conf")
 
 # Loading penn_CNV output file
 pennCNV_output <- fread("../data/sample_cnv_data.txt", header = FALSE)
@@ -27,7 +27,7 @@ separate_cols <- function(df) {
     separate(temp_chrpos, into = c("chr","bp"), sep = ":", convert = TRUE) %>%
     separate(bp, into = c("start_bp", "end_bp"), sep = "-", convert = TRUE) %>%
     separate(state_cn, into = c("state", "cn"), sep = "," , convert = TRUE) %>%
-    select(-c(confidence,state)) %>%
+    select(-c(conf,state)) %>%
     mutate(num_snp = as.integer(str_replace(num_snp, "numsnp=", "")),
            length_bp = as.integer(str_replace(length_bp, "length=", "")),
            cn = as.integer(str_replace(cn, "cn=", "")),
@@ -63,10 +63,10 @@ CNV_data <- create_indiv_cnv_df(new_pennCNV_output)
 
 create_cnv_info <- function(df) {
   df <- df %>%
-    select(c(cnv_id, chr, start_bp, end_bp, num_snp, start_snp, end_snp))
-  # Remove duplicated rows of CNVs
-  df <- unique(df) %>%
-    arrange(chr, start_bp)
+    select(c(cnv_id, chr, start_bp, end_bp, start_snp, end_snp, num_snp)) %>%
+    arrange(chr, start_bp) %>%
+    # Remove duplicated rows of CNVs
+    unique()
 }
 
 # Calling function on tidied pennCNV output to "CNV_data"
@@ -108,15 +108,16 @@ calculate_CNV_counts <- function(df) {
   # Initialize an empty dataframe
   CNV_counts_long <- data.frame(CNV = character(0), Number = character(0), Count = numeric(0), stringsAsFactors = FALSE)
   for (allele in names(df)) {
+    # Create contingency table
     number_counts <- as.data.frame(table(df[[allele]]))
     number_counts$Allele <- allele
-    names(number_counts) <- c("Number", "Count", "CNV")
+    names(number_counts) <- c("CopyNumber", "Count", "CNV_ID")
     # Bind this allele's data to the main dataframe
     CNV_counts_long <- rbind(CNV_counts_long, number_counts)
   }
   # Converting into wider dataframe
   CNV_df <- CNV_counts_long %>%
-    pivot_wider(names_from = Number, 
+    pivot_wider(names_from = CopyNumber, 
                 values_from = Count)
   # Replacing all NA values with 0
   CNV_df[is.na(CNV_df)] <- 0
@@ -130,11 +131,11 @@ CNV_counts <- calculate_CNV_counts(CNV_data)
 # Calculate frequency - based on the count table from above
 
 calculate_CNV_frequency <- function(df) {
-  df <- df %>% mutate(across(-c(CNV, Total), ~ ./Total)) %>%
+  df <- df %>% mutate(across(-c(CNV_ID, Total), ~ ./Total)) %>%
     select(-Total)
   # Renaming column names for clarity 
   colnames(df) <- paste0("cn=",colnames(df))
-  df <- rename(df, "CNV" = "cn=CNV")
+  df <- rename(df, "CNV_ID" = "cn=CNV_ID")
   return(df)
 }
 
