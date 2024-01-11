@@ -4,6 +4,13 @@
 #PBS -P 13003083
 #PBS -q normal
 #PBS -N count_CNV_per_window
+#PBS -o log/
+#PBS -j oe
+
+# Enter where the job script is submitted.
+cd $PBS_O_WORKDIR || exit $? 
+# if no log folder, then make one
+[ -d log ] || mkdir log  
 
 # load R environment into the cluster
 module load r/4.2.0
